@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndexedDB CRUD</title>
+</head>
+<body>
+
+    <h2>Guardar lista de servicios</h2>
+
+    <input type="text" id="nombre" placeholder="Nombre">
+    <input type="number" id="edad" placeholder="Edad">
+    <button onclick="agregarUsuario()">Agregar Usuario</button>
+
+    <h3>Lista de Usuarios</h3>
+    <ul id="listaUsuarios"></ul>
+
+    <script>
+        let db;
+
+        // 1️⃣ Abrir o crear la base de datos
+        let request = indexedDB.open("MiBaseDeDatos", 1);
+
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            let objectStore = db.createObjectStore("usuarios", { keyPath: "id", autoIncrement: true });
+            objectStore.createIndex("nombre", "nombre", { unique: false });
+            console.log("Base de datos y almacén creados");
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            console.log("Base de datos abierta con éxito");
+            mostrarUsuarios();
+        };
+
+        request.onerror = function(event) {
+            console.log("Error al abrir la base de datos", event.target.error);
+        };
+
+        // 2️⃣ Agregar un usuario
+        function agregarUsuario() {
+            let nombre = document.getElementById("nombre").value;
+            let edad = document.getElementById("edad").value;
+
+            if (nombre === "" || edad === "") {
+                alert("Completa todos los campos");
+                return;
+            }
+
+            let transaction = db.transaction(["usuarios"], "readwrite");
+            let objectStore = transaction.objectStore("usuarios");
+
+            let nuevoUsuario = { nombre: nombre, edad: parseInt(edad) };
+            let request = objectStore.add(nuevoUsuario);
+
+            request.onsuccess = function() {
+                console.log("Usuario agregado correctamente");
+                mostrarUsuarios();
+            };
+
+            request.onerror = function() {
+                console.log("Error al agregar usuario");
+            };
+        }
+
+        // 3️⃣ Mostrar usuarios en la lista
+        function mostrarUsuarios() {
+            let transaction = db.transaction(["usuarios"], "readonly");
+            let objectStore = transaction.objectStore("usuarios");
+
+            let listaUsuarios = document.getElementById("listaUsuarios");
+            listaUsuarios.innerHTML = ""; // Limpiar lista
+
+            let request = objectStore.openCursor();
+            request.onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    let li = document.createElement("li");
+                    li.innerHTML = `ID: ${cursor.value.id} - ${cursor.value.nombre} (${cursor.value.edad} años) 
+                    <button onclick="eliminarUsuario(${cursor.value.id})">Eliminar</button>
+                    <button onclick="actualizarUsuario(${cursor.value.id}, '${cursor.value.nombre}', ${cursor.value.edad})">Editar</button>`;
+                    listaUsuarios.appendChild(li);
+                    cursor.continue();
+                }
+            };
+        }
+
+        // 4️⃣ Eliminar un usuario
+        function eliminarUsuario(id) {
+            let transaction = db.transaction(["usuarios"], "readwrite");
+            let objectStore = transaction.objectStore("usuarios");
+
+            let request = objectStore.delete(id);
+            request.onsuccess = function() {
+                console.log("Usuario eliminado correctamente");
+                mostrarUsuarios();
+            };
+        }
+
+        // 5️⃣ Actualizar un usuario
+        function actualizarUsuario(id, nombreActual, edadActual) {
+            let nuevoNombre = prompt("Nuevo nombre:", nombreActual);
+            let nuevaEdad = prompt("Nueva edad:", edadActual);
+
+            if (nuevoNombre === null || nuevaEdad === null) return;
+
+            let transaction = db.transaction(["usuarios"], "readwrite");
+            let objectStore = transaction.objectStore("usuarios");
+
+            let usuarioActualizado = { id: id, nombre: nuevoNombre, edad: parseInt(nuevaEdad) };
+            let request = objectStore.put(usuarioActualizado);
+
+            request.onsuccess = function() {
+                console.log("Usuario actualizado correctamente");
+                mostrarUsuarios();
+            };
+        }
+    </script>
+
+</body>
+</html>
