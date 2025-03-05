@@ -3,23 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IndexedDB CRUD</title>
+    <meta name="author" content="miguel laguna">
+    <title>Guarda rapido y seguro</title>
 </head>
 <body>
 
-    <h2>Guardar lista de servicios</h2>
+    <h2>Gestión de Usuarios</h2>
 
     <input type="text" id="nombre" placeholder="Nombre">
     <input type="number" id="edad" placeholder="Edad">
     <button onclick="agregarUsuario()">Agregar Usuario</button>
+    
+    <br><br>
+
+    <input type="text" id="buscarNombre" placeholder="Buscar por nombre">
+    <button onclick="buscarUsuario()">Buscar</button>
 
     <h3>Lista de Usuarios</h3>
     <ul id="listaUsuarios"></ul>
 
+    <h3>Resultados de Búsqueda</h3>
+    <ul id="resultadoBusqueda"></ul>
+
     <script>
         let db;
 
-        // 1️⃣ Abrir o crear la base de datos
+        //dtos
         let request = indexedDB.open("MiBaseDeDatos", 1);
 
         request.onupgradeneeded = function(event) {
@@ -39,10 +48,10 @@
             console.log("Error al abrir la base de datos", event.target.error);
         };
 
-        // 2️⃣ Agregar un usuario
+        // agre un usuario
         function agregarUsuario() {
-            let nombre = document.getElementById("nombre").value;
-            let edad = document.getElementById("edad").value;
+            let nombre = document.getElementById("nombre").value.trim();
+            let edad = document.getElementById("edad").value.trim();
 
             if (nombre === "" || edad === "") {
                 alert("Completa todos los campos");
@@ -57,6 +66,7 @@
 
             request.onsuccess = function() {
                 console.log("Usuario agregado correctamente");
+                limpiarInputs();
                 mostrarUsuarios();
             };
 
@@ -65,7 +75,7 @@
             };
         }
 
-        // 3️⃣ Mostrar usuarios en la lista
+        //  Mostrar usuarios en la lista
         function mostrarUsuarios() {
             let transaction = db.transaction(["usuarios"], "readonly");
             let objectStore = transaction.objectStore("usuarios");
@@ -87,7 +97,7 @@
             };
         }
 
-        // 4️⃣ Eliminar un usuario
+        // Eliminar un usuario
         function eliminarUsuario(id) {
             let transaction = db.transaction(["usuarios"], "readwrite");
             let objectStore = transaction.objectStore("usuarios");
@@ -99,7 +109,7 @@
             };
         }
 
-        // 5️⃣ Actualizar un usuario
+        // Actualizar un usuario
         function actualizarUsuario(id, nombreActual, edadActual) {
             let nuevoNombre = prompt("Nuevo nombre:", nombreActual);
             let nuevaEdad = prompt("Nueva edad:", edadActual);
@@ -116,6 +126,45 @@
                 console.log("Usuario actualizado correctamente");
                 mostrarUsuarios();
             };
+        }
+
+        // Buscar un usuario por nombre
+        function buscarUsuario() {
+            let nombreBuscado = document.getElementById("buscarNombre").value.trim();
+            if (nombreBuscado === "") {
+                alert("Escribe un nombre para buscar");
+                return;
+            }
+
+            let transaction = db.transaction(["usuarios"], "readonly");
+            let objectStore = transaction.objectStore("usuarios");
+            let index = objectStore.index("nombre");
+
+            let request = index.openCursor();
+            let resultadoBusqueda = document.getElementById("resultadoBusqueda");
+            resultadoBusqueda.innerHTML = ""; // Limpiar resultados
+
+            request.onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.value.nombre.toLowerCase() === nombreBuscado.toLowerCase()) {
+                        let li = document.createElement("li");
+                        li.innerHTML = `ID: ${cursor.value.id} - ${cursor.value.nombre} (${cursor.value.edad} años)`;
+                        resultadoBusqueda.appendChild(li);
+                    }
+                    cursor.continue();
+                } else {
+                    if (resultadoBusqueda.innerHTML === "") {
+                        resultadoBusqueda.innerHTML = "<li>No se encontraron resultados</li>";
+                    }
+                }
+            };
+        }
+
+        // Limpiar los inputs
+        function limpiarInputs() {
+            document.getElementById("nombre").value = "";
+            document.getElementById("edad").value = "";
         }
     </script>
 
